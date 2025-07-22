@@ -75,6 +75,7 @@ class Widget_Data_Table extends Widget_Base {
                 'default' => 'student_list',
                 'options' => [
                     'student_list' => __( 'Lista de Alunos', 'ld-analytics-widgets' ),
+                    'course_effectiveness' => __( 'Cursos Mais Eficazes', 'ld-analytics-widgets' ),
                     // Futuramente: 'course_progress_list' => __( 'Progresso por Curso', 'ld-analytics-widgets' ),
                 ],
                 'description' => __( 'Selecione o conjunto de dados a ser exibido nesta tabela.', 'ld-analytics-widgets' ),

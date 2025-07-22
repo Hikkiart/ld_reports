@@ -45,10 +45,13 @@ class Widget_KPI_Card extends LD_Analytics_Base_Widget {
                 'label' => __( 'Métrica a Exibir', 'ld-analytics-widgets' ),
                 'type' => Controls_Manager::SELECT,
                 'default' => 'active_students',
+                // CORREÇÃO: Adicionadas as novas métricas e corrigidos os nomes para corresponder ao Data_Provider.
                 'options' => [
-                    'active_students'    => __( 'Alunos Ativos (no período)', 'ld-analytics-widgets' ),
-                    'course_completions' => __( 'Total de Conclusões de Curso', 'ld-analytics-widgets' ),
-                    'completion_rate'    => __( 'Taxa de Conclusão Média', 'ld-analytics-widgets' ),
+                    'active_students'             => __( 'Alunos Ativos (no período)', 'ld-analytics-widgets' ),
+                    'total_enrollments'           => __( 'Total de Inscrições', 'ld-analytics-widgets' ),
+                    'completed_courses'           => __( 'Cursos Concluídos (Geral)', 'ld-analytics-widgets' ),
+                    'completion_rate'             => __( 'Taxa de Conclusão Média', 'ld-analytics-widgets' ),
+                    'specific_course_completions' => __( 'Conclusões de Curso Específico', 'ld-analytics-widgets' ),
                 ],
             ]
         );

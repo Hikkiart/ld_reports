@@ -8,49 +8,32 @@
             this.filterWidget = $('.ld-analytics-filters');
             this.dataTables = {}; // Armazena instâncias do DataTable
 
-            // Se o widget de filtros existir, inicializa-o.
-            // A inicialização dos filtros irá então despoletar o carregamento dos outros widgets.
             if (this.filterWidget.length) {
                 this.initFilters();
             } else {
-                // Se não houver filtros na página, carrega os widgets com dados padrão.
                 this.loadAllWidgets({});
             }
         },
 
-        /**
-         * Inicializa o widget de filtros.
-         * Esta função é agora o ponto de partida para tudo.
-         */
         initFilters: function() {
             const self = this;
             const $courseSelect = self.filterWidget.find('.ld-course-filter');
             
-            // Define as datas padrão para os últimos 30 dias.
             const endDate = new Date();
             const startDate = new Date();
             startDate.setDate(endDate.getDate() - 30);
             self.filterWidget.find('.ld-date-start').val(startDate.toISOString().split('T')[0]);
             self.filterWidget.find('.ld-date-end').val(endDate.toISOString().split('T')[0]);
 
-            // Adiciona o listener para o botão de aplicar.
             self.filterWidget.find('#ld-apply-filters').on('click', function() {
                 self.applyFilters();
             });
 
-            // A MÁGICA ACONTECE AQUI:
-            // Busca a lista de cursos e SÓ DEPOIS de a ter, aplica os filtros pela primeira vez.
-            // Isto garante que os widgets não são carregados antes de a página estar pronta.
             this.populateCourseFilter($courseSelect).done(function() {
-                // Agora que os cursos estão carregados, podemos carregar os dados dos widgets.
                 self.applyFilters();
             });
         },
         
-        /**
-         * Preenche o seletor de cursos.
-         * Retorna um objeto Deferred do jQuery para que possamos saber quando termina.
-         */
         populateCourseFilter: function($selectElement) {
             return $.ajax({
                 url: ldAnalytics.ajax_url,
@@ -69,9 +52,6 @@
             });
         },
 
-        /**
-         * Recolhe os valores dos filtros e despoleta o recarregamento dos widgets.
-         */
         applyFilters: function() {
             const filters = {
                 start_date: this.filterWidget.find('.ld-date-start').val(),
@@ -81,9 +61,6 @@
             this.loadAllWidgets(filters);
         },
 
-        /**
-         * Itera sobre todos os widgets de dados e pede para carregar os seus dados.
-         */
         loadAllWidgets: function(filters) {
             this.widgets.each((index, el) => {
                 const $widget = $(el);
@@ -92,9 +69,6 @@
             });
         },
 
-        /**
-         * Faz a chamada AJAX para buscar os dados de um widget específico.
-         */
         loadWidgetData: function($widget, filters) {
             const widgetType = $widget.data('widget-type');
             const metric = $widget.data('metric');
@@ -111,9 +85,10 @@
                 },
                 success: (response) => {
                     if (response.success && this.renderers[widgetType]) {
-                        this.renderers[widgetType]($widget, response.data);
+                        // Passa a 'metric' para a função de renderização
+                        this.renderers[widgetType]($widget, response.data, metric);
                     } else {
-                        console.error('Erro no Widget:', response.data.message);
+                        console.error('Erro no Widget:', response.data ? response.data.message : 'Resposta sem sucesso.');
                     }
                 },
                 error: (jqXHR, textStatus, errorThrown) => {
@@ -125,9 +100,6 @@
             });
         },
 
-        /**
-         * Objeto com funções para renderizar os dados em cada tipo de widget.
-         */
         renderers: {
             kpi_card: function($widget, data) {
                 $widget.find('.ld-kpi-label').text(data.label);
@@ -135,7 +107,7 @@
                 if (data.is_percentage) {
                     value = `${parseFloat(value).toFixed(1)}%`;
                 } else {
-                    value = parseInt(value, 10).toLocaleString('pt-BR');
+                    value = !isNaN(parseInt(value, 10)) ? parseInt(value, 10).toLocaleString('pt-BR') : value;
                 }
                 $widget.find('.ld-kpi-value').text(value);
             },
@@ -154,25 +126,48 @@
                 canvas.chartInstance = new Chart(canvas.getContext('2d'), { type: 'bar', data: data, options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' }});
             },
             
-            data_table: function($widget, data) {
+            data_table: function($widget, data, metric) {
                 const tableId = $widget.find('table').attr('id');
                 if (!tableId) return;
 
-                if ($.fn.DataTable.isDataTable('#' + tableId)) {
-                    LDAnalyticsWidgets.dataTables[tableId].clear().rows.add(data).draw();
-                } else {
-                    LDAnalyticsWidgets.dataTables[tableId] = $('#' + tableId).DataTable({
-                        data: data,
-                        columns: [
-                            { data: 'display_name', title: 'Nome' },
-                            { data: 'user_email', title: 'Email' },
-                            { data: 'course_count', title: 'Cursos Inscritos' },
-                            { data: 'last_activity', title: 'Última Atividade' }
-                        ],
-                        responsive: true,
-                        language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' }
-                    });
+                let columns = [];
+
+                // Define as colunas corretas com base na métrica recebida
+                if (metric === 'student_report') {
+                    columns = [
+                        { data: 'display_name', title: 'Nome' },
+                        { data: 'user_email', title: 'Email' },
+                        { data: 'course_count', title: 'Cursos Inscritos' },
+                        { data: 'last_activity', title: 'Última Atividade' }
+                    ];
+                } else if (metric === 'course_effectiveness') {
+                    columns = [
+                        { data: 'course_name', title: 'Curso' },
+                        { data: 'enrollments', title: 'Inscrições' },
+                        { data: 'completions', title: 'Conclusões' },
+                        { 
+                            data: 'completion_rate', 
+                            title: 'Taxa de Conclusão',
+                            render: function(data, type, row) {
+                                return parseFloat(data).toFixed(2) + ' %';
+                            }
+                        }
+                    ];
                 }
+
+                // Se a tabela já existe, destrói-a para poder recriá-la com as novas colunas
+                if ($.fn.DataTable.isDataTable('#' + tableId)) {
+                    LDAnalyticsWidgets.dataTables[tableId].destroy();
+                    $('#' + tableId + ' thead').empty(); 
+                }
+
+                // Inicializa a DataTable com os dados e as colunas corretas
+                LDAnalyticsWidgets.dataTables[tableId] = $('#' + tableId).DataTable({
+                    data: data,
+                    columns: columns,
+                    responsive: true,
+                    language: { url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/pt-BR.json' }
+                });
             }
         }
     };

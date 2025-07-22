@@ -46,8 +46,12 @@ class Ajax_Handler {
                     $data = Data_Provider::get_bar_chart_data( $metric, $sanitized_filters );
                     break;
                 case 'data_table':
-                    $data = Data_Provider::get_table_data( $metric, $sanitized_filters );
-                    break;
+    if ($metric === 'student_report') {
+        $data = Data_Provider::get_table_data( $metric, $filters );
+    } elseif ($metric === 'course_effectiveness') {
+        $data = Data_Provider::get_course_effectiveness_data( $filters );
+    }
+    break;
                 default:
                     throw new \Exception(__( 'Tipo de widget desconhecido.', 'ld-analytics-widgets' ));
             }
